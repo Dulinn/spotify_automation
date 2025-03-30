@@ -8,6 +8,10 @@ If you create your own Spotify application, make sure to add http://127.0.0.1:80
 
 Go to source/shell_scripts/set_variables.sh and insert your client_id and client_secret. Run set_variables.sh each time you run any API calls from a new environment to ensure authorization.
 
+Side note: If you add your client_id and client_secret to set_variables.sh, make sure to not push the changed file with the credentials to the remote. To stop git from showing the file as modified, you can run
+
+``git update-index --assume-unchanged source/shell_scripts/set_variables.sh``
+
 To test if authorization works, you can run
 
 ``python3 source/executables/get_track_metadata.py 180OrhCzFdX7Pyhri6AerI``
