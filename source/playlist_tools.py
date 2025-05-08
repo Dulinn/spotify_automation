@@ -1,6 +1,6 @@
 import spotipy
-from source.contants import TEST_ACCOUNT_USER_ID
-from source.spotify_client import get_spotify_client
+from contants import TEST_ACCOUNT_USER_ID
+from spotify_client import get_spotify_client
 from enum import Enum
 from itertools import chain
 
@@ -14,28 +14,43 @@ class DeduplicationMethod(Enum):
 class PlaylistTools:
     def __init__(self, user_id=TEST_ACCOUNT_USER_ID):
         self.spotify_client = get_spotify_client(user_id=user_id)
-        print(self.spotify_client.me())
         self.user_id = user_id
 
-    def create_or_clean_playlist(self, name, user_id=None):
+    def get_user_playlists_by_name(self, name, user_id=None):
         if user_id is None:
             user_id = self.user_id
-        print(f"Creating or cleaning playlist {name} with for user {user_id}")
         user_playlists = self.spotify_client.user_playlists(user=user_id)
-        playlists_with_name = [
-            playlist for playlist in user_playlists["items"] if playlist["name"] == name
-        ]
-        if len(playlists_with_name) == 0:
+        return [playlist for playlist in user_playlists["items"] if playlist["name"] == name]
+    
+    def get_or_create_playlist(self, name, user_id=None):
+        if user_id is None:
+            user_id = self.user_id
+        playlists = self.get_user_playlists_by_name(name=name, user_id=user_id)
+        if len(playlists) > 1:
+            f"There is more than one playlist with the name {name}, so I don't know which one to return. Please clean up first."
+        elif len(playlists) == 1:
+            print(f"Found exactly 1 playlist with name {name}")
+            return playlists[0]
+        else:
+            print(f"Playlist {name} does not exist, creating")
+            return self._create_playlist(user_id=user_id, name=name)
+
+    def create_or_clean_playlist(self, name, user_id=None, quiet=False):
+        print(f"Creating or cleaning playlist {name} for user {user_id}")
+
+        playlists = self.get_user_playlists_by_name(name=name, user_id=user_id)
+        if len(playlists) == 0:
             response = self._create_playlist(name)
             return response["id"]
-        elif len(playlists_with_name) == 1:
-            id = playlists_with_name[0]["id"]
-            confirmation = input(
-                f"Playlist {name}, id {id} already exists. Do you want to clean it? (y/n)"
-            )
-            if confirmation.lower() != "y":
-                print("Aborting.")
-                return None
+        elif len(playlists) == 1:
+            id = playlists[0]["id"]
+            if not quiet:
+                confirmation = input(
+                    f"Playlist {name}, id {id} already exists. Do you want to clean it? (y/n)"
+                )
+                if confirmation.lower() != "y": 
+                    print("Aborting.")
+                    return None
             self._clean_playlist(id)
             return id
         else:
@@ -46,7 +61,7 @@ class PlaylistTools:
     def _create_playlist(self, name, user_id=None):
         if user_id is None:
             user_id = self.user_id
-        return self.spotify_client.user_playlist_create(user_id, name)
+        return self.spotify_client.user_playlist_create(user=user_id, name=name)
 
     def _clean_playlist(self, id):
         self.spotify_client.playlist_replace_items(id, list())
@@ -144,6 +159,10 @@ class PlaylistTools:
             )
             for track in playlist["items"]:
                 yield track["track"]
+    
+    def get_tracks_as_list(self, playlist_id):
+        tracks = self.get_and_iterate_tracks(playlist_id=playlist_id)
+        return list(tracks)
 
     def update_playlist_description(self, playlist_id, description):
         self.spotify_client.playlist_change_details(
