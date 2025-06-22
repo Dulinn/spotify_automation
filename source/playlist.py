@@ -7,7 +7,7 @@ class Playlist:
         self.owner_id = owner_id
         self.playlist_tools = playlist_tools
         # get playlist from Spotify API, create if it doesn't exist yet
-        self.spotify_playlist = playlist_tools.get_or_create_playlist(name=name, user_id=self.owner_id)
+        self.spotify_playlist = playlist_tools.get_or_create_playlist(name=name)
         self.id = self.spotify_playlist['id']
         self._tracks = None
         print(f"loaded playlist {self.name}. len tracks: {len(self.tracks)}")

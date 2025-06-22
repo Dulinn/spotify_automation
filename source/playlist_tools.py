@@ -1,5 +1,5 @@
 import spotipy
-from contants import TEST_ACCOUNT_USER_ID
+import config
 from spotify_client import get_spotify_client
 from enum import Enum
 from itertools import chain
@@ -12,20 +12,16 @@ class DeduplicationMethod(Enum):
 
 
 class PlaylistTools:
-    def __init__(self, user_id=TEST_ACCOUNT_USER_ID):
-        self.spotify_client = get_spotify_client(user_id=user_id)
-        self.user_id = user_id
+    def __init__(self):
+        print(f"PlaylistTools init")
+        self.spotify_client = get_spotify_client(user_id=config.USER_ID)
 
-    def get_user_playlists_by_name(self, name, user_id=None):
-        if user_id is None:
-            user_id = self.user_id
+    def get_user_playlists_by_name(self, name, user_id=config.USER_ID):
         user_playlists = self.spotify_client.user_playlists(user=user_id)
         return [playlist for playlist in user_playlists["items"] if playlist["name"] == name]
     
-    def get_or_create_playlist(self, name, user_id=None):
-        if user_id is None:
-            user_id = self.user_id
-        playlists = self.get_user_playlists_by_name(name=name, user_id=user_id)
+    def get_or_create_playlist(self, name):
+        playlists = self.get_user_playlists_by_name(name=name, user_id=config.USER_ID)
         if len(playlists) > 1:
             f"There is more than one playlist with the name {name}, so I don't know which one to return. Please clean up first."
         elif len(playlists) == 1:
@@ -33,12 +29,12 @@ class PlaylistTools:
             return playlists[0]
         else:
             print(f"Playlist {name} does not exist, creating")
-            return self._create_playlist(user_id=user_id, name=name)
+            return self._create_playlist(name=name)
 
-    def create_or_clean_playlist(self, name, user_id=None, quiet=False):
-        print(f"Creating or cleaning playlist {name} for user {user_id}")
+    def create_or_clean_playlist(self, name, quiet=False):
+        print(f"Creating or cleaning playlist {name} for user {config.USER_ID}")
 
-        playlists = self.get_user_playlists_by_name(name=name, user_id=user_id)
+        playlists = self.get_user_playlists_by_name(name=name)
         if len(playlists) == 0:
             response = self._create_playlist(name)
             return response["id"]
@@ -58,10 +54,8 @@ class PlaylistTools:
                 f"There is more than one playlist with the name {name}, so I don't know which one to clean. Please clean up first."
             )
 
-    def _create_playlist(self, name, user_id=None):
-        if user_id is None:
-            user_id = self.user_id
-        return self.spotify_client.user_playlist_create(user=user_id, name=name)
+    def _create_playlist(self, name):
+        return self.spotify_client.user_playlist_create(user=config.USER_ID, name=name)
 
     def _clean_playlist(self, id):
         self.spotify_client.playlist_replace_items(id, list())
@@ -116,26 +110,24 @@ class PlaylistTools:
         )
         return deduplicated_tracks_dict
 
-    def add_tracks_to_playlist(self, playlist_id, tracks, user_id=None):
-        if user_id is None:
-            user_id = self.user_id
+    def add_tracks_to_playlist(self, playlist_id, tracks):
         for batch in self._list_batcher(list_to_batch=tracks, batch_size=100):
             try:
                 self.spotify_client.user_playlist_add_tracks(
-                    user=user_id, playlist_id=playlist_id, tracks=batch
+                    user=config.USER_ID, playlist_id=playlist_id, tracks=batch
                 )
             except (TypeError, spotipy.exceptions.SpotifyException):
                 for track in self._list_batcher(list_to_batch=batch, batch_size=1):
                     try:
                         self.spotify_client.user_playlist_add_tracks(
-                            user=user_id,
+                            user=config.USER_ID,
                             playlist_id=playlist_id,
                             tracks=track,
                         )
                     except TypeError as e:
                         print(f"TypeError occurred at track {track}: {e}")
                     except spotipy.exceptions.SpotifyException as e:
-                        print(f"SpotiffyException at track {track}: {e}")
+                        print(f"SpotifyException at track {track}: {e}")
 
     def _list_batcher(self, list_to_batch, batch_size):
         for lower, upper in self._batcher(
