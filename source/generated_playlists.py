@@ -12,7 +12,7 @@ class GeneratedPlaylist:
         self.description = description
 
     def sync(self):
-        tracks = [track for track in self.library.track_ids if self.filter_function(track)]
+        tracks = [track['id'] for track in self.library.tracks if self.filter_function(track)]
         playlist_id = PLAYLIST_TOOLS.create_or_clean_playlist(name=self.name, quiet=True)
         PLAYLIST_TOOLS.add_tracks_to_playlist(playlist_id=playlist_id, tracks=tracks)
         if self.description is not None:

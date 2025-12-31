@@ -8,6 +8,10 @@ PLAYLIST_TOOLS = PlaylistTools()
 class Library:
     def __init__(self, library_name):
         self._library_playlist = Playlist(name=library_name, owner_id=config.USER_ID, playlist_tools=PLAYLIST_TOOLS)
+        self._baseplaylistset_style = None
+        self._baseplaylistset_energy = None
+        self._baseplaylistset_bpm = None
+        self._baseplaylistset_like = None
     
     @property
     def library_playlist(self):
@@ -20,6 +24,91 @@ class Library:
     @property
     def track_ids(self):
         return self.library_playlist.track_ids
+    
+    @property
+    def style(self):
+        if self._baseplaylistset_style is None:
+            raise(ValueError("Style not set"))
+        return self._baseplaylistset_style
+    
+    @style.setter
+    def style(self, style):
+        self._baseplaylistset_style = style
+
+    @property
+    def energy(self):
+        if self._baseplaylistset_energy is None:
+            raise(ValueError("Energy not set"))
+        return self._baseplaylistset_energy
+    
+    @energy.setter
+    def energy(self, energy):
+        self._baseplaylistset_energy = energy
+
+    @property
+    def bpm(self):
+        if self._baseplaylistset_bpm is None:
+            raise(ValueError("BPM not set"))
+        return self._baseplaylistset_bpm
+
+    @bpm.setter
+    def bpm(self, bpm):
+        self._baseplaylistset_bpm = bpm
+
+    @property
+    def like(self): 
+        if self._baseplaylistset_like is None:
+            raise(ValueError("Like not set"))
+        return self._baseplaylistset_like
+    
+    @like.setter
+    def like(self, like):
+        self._baseplaylistset_like = like  
+
+    def check_missing_songs_in_playlistsets_not_in_library(self):
+        missing_tracks = []
+        all_playlistset_track_ids = set()
+        if self._baseplaylistset_style is not None:
+            all_playlistset_track_ids.update(self.style.track_ids)
+        if self._baseplaylistset_energy is not None:
+            all_playlistset_track_ids.update(self.energy.track_ids)
+        if self._baseplaylistset_bpm is not None:
+            all_playlistset_track_ids.update(self.bpm.track_ids)
+        if self._baseplaylistset_like is not None:
+            all_playlistset_track_ids.update(self.like.track_ids)
+        
+        for track_id in all_playlistset_track_ids:
+            if track_id not in self.track_ids:
+                missing_tracks.append(track_id)
+        missing_in_base_library_playlist = PLAYLIST_TOOLS.create_or_clean_playlist("MISSING_IN_BASE_LIBRARY", quiet=True)
+        PLAYLIST_TOOLS.add_tracks_to_playlist(missing_in_base_library_playlist, missing_tracks)
+
+
+    def get_track_statistics(self, track_id):
+        stats = {}
+        if self._baseplaylistset_style is not None:
+            for style_name, playlist in self.style.playlists.items():
+                if track_id in playlist.track_ids:
+                    stats['style'] = style_name.value
+                    break
+        if self._baseplaylistset_energy is not None:
+            for energy_name, playlist in self.energy.playlists.items():
+                if track_id in playlist.track_ids:
+                    stats['energy'] = self.energy.NAME_TO_ENERGY[energy_name]
+                    break
+        if self._baseplaylistset_bpm is not None:
+            for bpm_name, playlist in self.bpm.playlists.items():
+                if track_id in playlist.track_ids:
+                    stats['bpm'] = self.bpm.NAME_TO_BPM[bpm_name]
+                    break
+        if self._baseplaylistset_like is not None:
+            for like_name, playlist in self.like.playlists.items():
+                if track_id in playlist.track_ids:
+                    stats['like'] = self.like.NAME_TO_LIKE[like_name]
+                    break
+        return stats
+
+    
 
 class BasePlaylistSet:
     SET_NAME = None
@@ -108,6 +197,25 @@ class BasePlaylistSetBPM(BasePlaylistSetAllTracks):
         BPM_135_139 = "BASE_BPM_135_139"
         BPM_ABOVE_140 = "BASE_BPM_ABOVE_140"
     
+    NAME_TO_BPM = {
+        NAME.BPM_BELOW_70: 67,
+        NAME.BPM_70_74: 72,
+        NAME.BPM_75_79: 77,
+        NAME.BPM_80_84: 82,
+        NAME.BPM_85_89: 87,
+        NAME.BPM_90_94: 92,
+        NAME.BPM_95_99: 97,
+        NAME.BPM_100_104: 102,
+        NAME.BPM_105_109: 107,
+        NAME.BPM_110_114: 112,
+        NAME.BPM_115_119: 117,
+        NAME.BPM_120_124: 122,
+        NAME.BPM_125_129: 127,
+        NAME.BPM_130_134: 132,
+        NAME.BPM_135_139: 137,
+        NAME.BPM_ABOVE_140: 142,
+    }
+
     def __init__(self, library):
         super().__init__(library=library)
 
@@ -116,8 +224,14 @@ class BasePlaylistSetEnergy(BasePlaylistSetAllTracks):
     SET_NAME = "ENERGY"
     class NAME(Enum):
         LOW = "BASE_ENERGY_LOW"
-        MEDUIM = "BASE_ENERGY_MEDIUM"
+        MEDIUM = "BASE_ENERGY_MEDIUM"
         HIGH = "BASE_ENERGY_HIGH"
+    
+    NAME_TO_ENERGY = {
+        NAME.LOW: 1,
+        NAME.MEDIUM: 2,
+        NAME.HIGH: 3,
+    }
     
     def __init__(self, library):
         print(f"init of BasePlaylistSetEnergy called")
@@ -136,6 +250,12 @@ class BasePlaylistSetLike(BasePlaylistSetAllTracks):
         LOW = "BASE_LIKE_LOW"
         MEDUÌUM = "BASE_LIKE_MEDIUM"
         HIGH = "BASE_LIKE_HIGH"
+    
+    NAME_TO_LIKE = {
+        NAME.LOW: 1,
+        NAME.MEDUÌUM: 2,
+        NAME.HIGH: 3,
+    }
 
 
 

@@ -3,6 +3,7 @@ import config
 from spotify_client import get_spotify_client
 from enum import Enum
 from itertools import chain
+from datetime import datetime
 
 
 class DeduplicationMethod(Enum):
@@ -13,7 +14,7 @@ class DeduplicationMethod(Enum):
 
 class PlaylistTools:
     def __init__(self):
-        print(f"PlaylistTools init")
+        #print(f"PlaylistTools init")
         self.spotify_client = get_spotify_client(user_id=config.USER_ID)
 
     def get_user_playlists_by_name(self, name, user_id=config.USER_ID):
@@ -150,6 +151,7 @@ class PlaylistTools:
                 playlist_id=playlist_id, limit=batch_size, offset=lower
             )
             for track in playlist["items"]:
+                track["track"]['added_at'] = datetime.strptime(track['added_at'], "%Y-%m-%dT%H:%M:%SZ")
                 yield track["track"]
     
     def get_tracks_as_list(self, playlist_id):
